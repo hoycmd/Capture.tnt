@@ -28,13 +28,13 @@ var GameStateValue = "Game";
 var EndOfMatchStateValue = "EndOfMatch";
 var DefAreaTag = "def";
 var CaptureAreaTag = "capture";
-var HoldPositionHint = "GameModeHint/HoldPosition";
-var RunToBliePointHint = "GameModeHint/RunToBliePoint";
-var DefBlueAreaHint = "GameModeHint/DefBlueArea";
-var DefThisAreaHint = "GameModeHint/DefThisArea";
-var WaitingForBlueBuildHint = "Синие, ";
+var HoldPositionHint = "Захват, синей зоны - ожидайте...";
+var RunToBliePointHint = "Захватите, синию - зону!";
+var DefBlueAreaHint = "Защищайте, синию - зону!";
+var DefThisAreaHint = "Защищайте, эту - зону!";
+var WaitingForBlueBuildHint = "Синие, застраивают синию зону.Помешай им, застроии - синию зону!";
 var ChangeTeamHint = "Выберите, команду!";
-var YourAreaIsCapturing = "GameModeHint/YourAreaIsCapturing";
+var YourAreaIsCapturing = "Красные, захватывают синию зону.Не дай захватит, синию зону!";
 var PrepareToDefBlueArea = "Застраивайте, синию - зону!";
 
 // постоянные переменные
@@ -487,7 +487,7 @@ function SetGameMode() {
 }
 function BlueWin() {
 	stateProp.Value = EndOfMatchStateValue;
-	Ui.GetContext().Hint.Value = "Hint/EndOfMatch";
+	Ui.GetContext().Hint.Value = "Конец, матча - победила команда: синия!";
 
 	var spawns = Spawns.GetContext();
 	spawns.enable = false;
@@ -497,7 +497,7 @@ function BlueWin() {
 }
 function RedWin() {
 	stateProp.Value = EndOfMatchStateValue;
-	Ui.GetContext().Hint.Value = "Hint/EndOfMatch";
+	Ui.GetContext().Hint.Value = "Конец, матча - победила команда: красная!";
 
 	var spawns = Spawns.GetContext();
 	spawns.enable = false;
