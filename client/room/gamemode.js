@@ -16,9 +16,9 @@ var MaxCapturePoints = 15;	// сколько макс очков
 var RedCaptureW = 1;		// вес красных при захвате спавна
 var BlueCaptureW = 2;		// вес синих при захвате спавна
 var CaptureRestoreW = 1;	// сколько очков отнимается, если нет красных в зоне для захвата
-var UnCapturedColor =new Color(0, 0, 1, 0);
-var FakeCapturedColor =new Color(1, 1,1, 0); // к какому цвету стремится зона при ее захвате
-var CapturedColor =new Color(1, 0, 0, 0);
+var UnCapturedColor = new Color(0, 0, 1, 0);
+var FakeCapturedColor = new Color(1, 1,1, 0); // к какому цвету стремится зона при ее захвате
+var CapturedColor = new Color(1, 0, 0, 0);
 var MaxSpawnsByArea = 25;	// макс спавнов на зону
 
 // константы
@@ -184,7 +184,7 @@ BreackGraph.WeakBlocks = GameMode.Parameters.GetBool("LoosenBlocks");
 
 // создаем визуализацию зон защиты
 var defView = AreaViewService.GetContext().Get("DefView");
-defView.color=new Color(0, 0, 1, 0);
+defView.Color = new Color(0, 0, 1, 0);
 defView.Tags = [ DefAreaTag ];
 defView.Enable = true;
 
