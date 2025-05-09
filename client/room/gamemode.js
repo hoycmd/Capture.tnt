@@ -1,6 +1,8 @@
 import { Map, AreaService, AreaViewService, AreaPlayerTriggerService, Game, Players, Inventory, LeaderBoard, BuildBlocksSet, Teams, Damage, BreackGraph, Ui, Properties, GameMode, Spawns, Timers, TeamsBalancer, NewGame, NewGameVote } from 'pixel_combats/room';
 import { DisplayValueHeader, Color } from 'pixel_combats/basic';
 
+try {
+	
 // * Настройки, констант. * //
 const WaitingPlayersTime = 10;
 const BuildBaseTime = 60;
@@ -505,3 +507,13 @@ function SpawnTeams() {
 	for (const team of Teams)
 		Spawns.GetContext(team).Spawn();
 }
+
+} catch (e) {
+   Players.All.forEach(msg => {
+msg.Show(`${e.name}: ${e.message} ${e.stack}`);
+   });
+}
+
+
+
+
