@@ -487,6 +487,7 @@ function SetGameMode() {
 }
 function BlueWin() {
 	stateProp.Value = EndOfMatchStateValue;
+	blueTeam.Properties.Scores.Value += 10000;
 	Ui.GetContext().Hint.Value = "Конец, матча - победила команда: синия!";
 
 	var spawns = Spawns.GetContext();
@@ -497,6 +498,7 @@ function BlueWin() {
 }
 function RedWin() {
 	stateProp.Value = EndOfMatchStateValue;
+	redTeam.Properties.Scores.Value += 10000;
 	Ui.GetContext().Hint.Value = "Конец, матча - победила команда: красная!";
 
 	var spawns = Spawns.GetContext();
