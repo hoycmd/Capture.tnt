@@ -28,11 +28,13 @@ const GameStateValue = 'Game';
 const EndOfMatchStateValue = 'EndOfMatch';
 const DefAreaTag = 'Def';
 const CaptureAreaTag = 'Capture';
+const DefBlueTriggerHint = 'Защищайтесь, синию - зону!';
 const DefBluePointsHint = 'Защищайте, эту - зону!';
 const RedDefCaptureZoneHint = 'Захватите, синию - зону!';
 const BlueBuildTriggerDefHint = 'Застройте синию - зону!';
+const TeamSelectionHint = 'Выберите, команду!';
 const RedWaitingBlueBuildTriggerHint = 'Синие, застраивают синию зону.Помешай им, застроить - синию зону!';
-const CaptureBlueTriggerHint = 'Красные, захватываю синию зону.Не дай захватить, синию - зону!';
+const CaptureBlueTriggerHint = 'Красные, захватывают синию зону.Не дай захватить, синию - зону!';
 const CaptureTriggerBlueHint = 'Идёт захват, синей зоны...';
 
 // * Постоянные объекты констант, при роботе с режимом. * //
@@ -331,56 +333,56 @@ LeaderBoard.TeamLeaderBoardValue = {
 	DisplayName: 'Statistics\Deaths',
 	ShortDisplayName: 'Statistics\Deaths'
 };
-// вес игрока в лидерборде
-LeaderBoard.PlayersWeightGetter.Set(function (player) {
-	return player.Properties.Get("Kills").Value;
+// * Вес игрока, в лидерборде. * //
+LeaderBoard.PlayersWeightGetter.Set(function(Player) {
+	return Player.Properties.Get('Kills').Value;
 });
 
-// задаем что выводить вверху
-Ui.GetContext().TeamProp1.Value = { Team: "Blue", Prop: "Deaths" };
+// * Выводим, с верху - счет команды синие. * //
+Ui.GetContext().TeamProp1.Value = { Team: 'Blue', Prop: 'Deaths' };
 
-// разрешаем вход в команды по запросу
-Teams.OnRequestJoinTeam.Add(function (player, team) { team.Add(player); });
-// спавн по входу в команду
-Teams.OnPlayerChangeTeam.Add(function (player) { player.Spawns.Spawn() });
+// * Разрешаем вход, в команды - по запросу. * //
+Teams.OnRequestJoinTeam.Add(function(Player, Team) { Team.Add(Player); });
+// * Спавн, по входу - в команду. * //
+Teams.OnPlayerChangeTeam.Add(function(Player) { Player.Spawns.Spawn() });
 
-// делаем игроков неуязвимыми после спавна
-var immortalityTimerName = "immortality";
+// * делаем игроков неуязвимыми, после респавна. * //
 Spawns.GetContext().OnSpawn.Add(function (player) {
-	player.Properties.Immortality.Value = true;
-	player.Timers.Get(immortalityTimerName).Restart(5);
+ player.Properties.Immortality.Value = true;
+ player.Timers.Get('Immortality').Restart(5);
 });
 Timers.OnPlayerTimer.Add(function (timer) {
-	if (timer.Id != immortalityTimerName) return;
-	timer.Player.Properties.Immortality.Value = false;
+ if (timer.Id != Immortality) timer.Player.Properties.Immortality.Value = false;
 });
 
-// если в команде количество смертей занулилось то завершаем игру
-Properties.OnTeamProperty.Add(function (context, value) {
-	if (context.Team != blueTeam) return;
-	if (value.Name !== "Deaths") return;
-	if (value.Value <= 0) RedWin();
+// * Если в команде количество смертей, занулилось то завершаем - игру. * //
+Properties.OnTeamProperty.Add(function(Context, Value) {
+ if (Context.Team != BlueTeam) return;
+  if (Value.Name !== 'Deaths') return;
+	 if (Value.Value <= 0) { 
+	RedWin();
+	  }
 });
 
-// счетчик спавнов
-Spawns.OnSpawn.Add(function (player) {
-	++player.Properties.Spawns.Value;
+// * Обработчик спавнов. * //
+Spawns.OnSpawn.Add(function(Player) {
+ ++Player.Properties.Spawns.Value;
 });
-// счетчик смертей
-Damage.OnDeath.Add(function (player) {
-	++player.Properties.Deaths.Value;
+// * Обработчик смертей. * //
+Damage.OnDeath.Add(function(Player) {
+ ++player.Properties.Deaths.Value;
 });
-// счетчик убийств
-Damage.OnKill.Add(function (player, killed) {
-	if (killed.Team != null && killed.Team != player.Team) {
-		++player.Properties.Kills.Value;
-		player.Properties.Scores.Value += 100;
+// * Обработчик убийств. * //
+Damage.OnKill.Add(function(Player, Killed) {
+ if (Killed.Team != null && Killed.Team != Player.Team) {
+	 ++Player.Properties.Kills.Value;
+	Player.Properties.Scores.Value += 100;
 	}
 });
 
-// настройка переключения режимов
+// * Переключения, игровых - режимов. * //
 mainTimer.OnTimer.Add(function () {
-	switch (stateProp.Value) {
+	switch (StateProp.Value) {
 		case WaitingStateValue:
 			SetBuildMode();
 			break;
@@ -396,100 +398,103 @@ mainTimer.OnTimer.Add(function () {
 	}
 });
 
-// задаем первое игровое состояние
+// * Первое, игровое - состояние. * //
 SetWaitingMode();
 
-// состояния игры
+// * Состояние, игры. * //
 function SetWaitingMode() {
-	stateProp.Value = WaitingStateValue;
+	StateProp.Value = WaitingStateValue;
 	Ui.GetContext().Hint.Value = "Ожидание, всех - игроков...";
 	Spawns.GetContext().enable = false;
-	mainTimer.Restart(WaitingPlayersTime);
+	MainTimer.Restart(WaitingPlayersTime);
 }
 
 function SetBuildMode() {
-	// инициализация режима
-	for (var i = 0; i < captureAreas.length; ++i) {
-		// визуализатор
-		var view = captureViews[i];
-		view.Area = captureAreas[i];
-		view.Color = UnCapturedColor;
-		view.Enable = i == 0;
-		// триггер
-		var trigger = captureTriggers[i];
-		trigger.Area = captureAreas[i];
-		trigger.Enable = true;
-		//trigger.OnEnter.Add(LogTrigger);
-		// свойство для захвата
-		var prop = captureProperties[i];
-		prop.Value = 0;
+  // * Инициализация, надобности режима. * //
+	for (const i = 0; i < CaptureAreas.length; ++i) {
+	// * Визуализатор, зон - захвата. //
+	const CaptureView = CaptureViews[i];
+	 CaptureView.Area = CaptureAreas[i];
+	 CaptureView.Color = UnCapturedColor;
+	 CaptureView.Enable = i === 0;
+	// * Триггер, зоны - захвата. * //
+	const CaptureTrigger = CaptureTriggers[i];
+	 CaptureTrigger.Area = CaptureAreas[i];
+	 CaptureTrigger.Enable = true;
+	//CaptureTrigger.OnEnter.Add(LogTrigger);
+	 // * Свойство, зон - захвата. * //
+       const prop = CaptureProperties[i];
+	  prop.Value = 0;
 	}
 
-	stateProp.Value = BuildModeStateValue;
-	Ui.GetContext().Hint.Value = ChangeTeamHint;
+	StateProp.Value = BuildModeStateValue;
+	Ui.GetContext().Hint.Value = TeamSelectionHint;
 	BlueTeam.Ui.Hint.Value = BlueBuildTriggerDefHint;
 	RedTeam.Ui.Hint.Value = RedWaitingBlueBuildTriggerHint;
 
-	blueTeam.Inventory.Main.Value = false;
-	blueTeam.Inventory.Secondary.Value = false;
-	blueTeam.Inventory.Melee.Value = true;
-	blueTeam.Inventory.Explosive.Value = false;
-	blueTeam.Inventory.Build.Value = true;
-	blueTeam.Inventory.BuildInfinity.Value = true;
+	BlueTeam.Inventory.Main.Value = false;
+	BlueTeam.Inventory.Secondary.Value = false;
+	BlueTeam.Inventory.Melee.Value = true;
+	BlueTeam.Inventory.Explosive.Value = false;
+	BlueTeam.Inventory.Build.Value = true;
+	BlueTeam.Inventory.BuildInfinity.Value = true;
 
-	redTeam.Inventory.Main.Value = false;
-	redTeam.Inventory.Secondary.Value = false;
-	redTeam.Inventory.Melee.Value = false;
-	redTeam.Inventory.Explosive.Value = false;
-	redTeam.Inventory.Build.Value = false;
+	RedTeam.Inventory.Main.Value = false;
+	RedTeam.Inventory.Secondary.Value = false;
+	RedTeam.Inventory.Melee.Value = false;
+	RedTeam.Inventory.Explosive.Value = false;
+	RedTeam.Inventory.Build.Value = false;
 
-	mainTimer.Restart(BuildBaseTime);
-	Spawns.GetContext().enable = true;
+	MainTimer.Restart(BuildBaseTime);
+	Spawns.GetContext().Enable = true;
 	SpawnTeams();
 }
 function SetGameMode() {
-	stateProp.Value = GameStateValue;
-	//Ui.GetContext().Hint.Value = "Hint/AttackEnemies";
-	blueTeam.Ui.Hint.Value = DefBlueAreaHint;
-	redTeam.Ui.Hint.Value = RunToBliePointHint;
+	StateProp.Value = GameStateValue;
+	BlueTeam.Ui.Hint.Value = DefBlueTriggerHint;
+	RedTeam.Ui.Hint.Value = RedDefCaptureZoneHint;
 
-	blueTeam.Inventory.Main.Value = true;
-	blueTeam.Inventory.MainInfinity.Value = true;
-	blueTeam.Inventory.Secondary.Value = true;
-	blueTeam.Inventory.SecondaryInfinity.Value = true;
-	blueTeam.Inventory.Melee.Value = true;
-	blueTeam.Inventory.Explosive.Value = true;
-	blueTeam.Inventory.Build.Value = true;
+	BlueTeam.Inventory.Main.Value = true;
+	BlueTeam.Inventory.MainInfinity.Value = true;
+	BlueTeam.Inventory.Secondary.Value = true;
+	BlueTeam.Inventory.SecondaryInfinity.Value = true;
+	BlueTeam.Inventory.Melee.Value = true;
+	BlueTeam.Inventory.Explosive.Value = true;
+	BlueTeam.Inventory.Build.Value = true;
 
-	redTeam.Inventory.Main.Value = true;
-	redTeam.Inventory.Secondary.Value = true;
-	redTeam.Inventory.Melee.Value = true;
-	redTeam.Inventory.Explosive.Value = true;
-	redTeam.Inventory.Build.Value = true;
+	RedTeam.Inventory.Main.Value = true;
+	RedTeam.Inventory.Secondary.Value = true;
+	RedTeam.Inventory.Melee.Value = true;
+	RedTeam.Inventory.Explosive.Value = true;
+	RedTeam.Inventory.Build.Value = true;
 
-	mainTimer.Restart(GameModeTime);
-	defTickTimer.RestartLoop(DefTimerTickInderval);
+        MainTimer.Restart(GameModeTime);
+	DefTickTimer.RestartLoop(DefTimerTickInderval);
 	Spawns.GetContext().Despawn();
 	SpawnTeams();
 }
 function BlueWin() {
-	stateProp.Value = EndOfMatchStateValue;
-	Ui.GetContext().Hint.Value = "Hint/EndOfMatch";
+	StateProp.Value = EndOfMatchStateValue;
+	BlueTeam.Properties.Scores.Value += 10000;
+	Ui.GetContext().Hint.Value = 'Конец, матча - победила команда: синия!';
 
 	var spawns = Spawns.GetContext();
-	spawns.enable = false;
+	spawns.Enable = false;
 	spawns.Despawn();
-	Game.GameOver(blueTeam);
-	mainTimer.Restart(EndOfMatchTime);
+	
+	Game.GameOver(BlueTeam);
+	MainTimer.Restart(EndOfMatchTime);
 }
 function RedWin() {
-	stateProp.Value = EndOfMatchStateValue;
-	Ui.GetContext().Hint.Value = "Hint/EndOfMatch";
+	StateProp.Value = EndOfMatchStateValue;
+	RedTeam.Properties.Scores.Value += 10000;
+	Ui.GetContext().Hint.Value = 'Конец, матча - победила команда: красная!';
 
 	var spawns = Spawns.GetContext();
-	spawns.enable = false;
+	spawns.Enable = false;
 	spawns.Despawn();
-	Game.GameOver(redTeam);
+	
+	Game.GameOver(RedTeam);
 	mainTimer.Restart(EndOfMatchTime);
 }
 function RestartGame() {
