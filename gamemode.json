@@ -1,0 +1,32 @@
+{
+  "Name": "Capture",
+  "Description": "CAPTURE: Захватывайте и защищайте зоны, чтобы получить приемущество в противоборстве двух команд.",
+  "StartClientVersion": 334,
+  "MapLists": [
+    {
+      "MapListId": 22754,
+      "Name": "Карты для режима захват"
+    }
+  ],
+  "Parameters": {
+    "Bool": [
+      {
+        "Name": "MapRotation",
+        "DisplayName": "GmParams/MapRotation",
+        "Default": true
+      },
+      {
+        "Name": "LoosenBlocks",
+        "DisplayName": "GmParams/LoosenBlocks",
+      },
+      {
+        "Name": "OnlyPlayerBlocksDmg",
+        "DisplayName": "GmParams/OnlyPlayerBlocksDmg",
+      },
+      {
+        "Name": "FriendlyFire",
+        "DisplayName": "GmParams/FriendlyFire",
+      }
+    ]
+  }
+}
