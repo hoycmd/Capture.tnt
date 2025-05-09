@@ -298,8 +298,11 @@ Properties.GetContext().GameModeName.Value = "GameModes/Team Dead Match";
 TeamsBalancer.IsAutoBalance = true;
 Ui.GetContext().MainTimerId.Value = mainTimer.Id;
 // * Создаём, команды. * //
-let BlueTeam = CreateNewTeam('Blue', 'Teams/Blue \n Синие', new Color(0, 0, 1, 0), BuildBlocksSet.Blue, Spawns.SpawnPointsGroups.Add(1));
-let RedTeam = CreateNewTeam('Red', 'Teams/Red \n Красные', new Color(1, 0, 0, 0), BuildBlocksSet.Red, Spawns.SpawnPointsGroups.Add(2));
+const BlueTeam = CreateNewTeam('Blue', 'Teams/Blue \n Синие', new Color(0, 0, 1, 0), BuildBlocksSet.Blue);
+const RedTeam = CreateNewTeam('Red', 'Teams/Red \n Красные', new Color(1, 0, 0, 0), BuildBlocksSet.Red);
+BlueTeam.Spawns.SpawnPointsGroups.Add(1);
+RedTeam.Spawns.SpawnPointsGroups.Add(2);
+
 // * Создаём, моментальный спавн - красным. * //
 BlueTeam.Spawns.RespawnTime.Value = 10;
 RedTeam.Spawns.RespawnTime.Value = 0;
