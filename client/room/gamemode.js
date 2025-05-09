@@ -1,88 +1,83 @@
-import { Map, AreaService, AreaViewService, AreaPlayerTriggerService, Game, Players, Inventory, LeaderBoard, BuildBlocksSet, Teams, Damage, BreackGraph, Ui, Properties, GameMode, Spawns, Timers, TeamsBalancer, NewGame, NewGameVote } from 
-  'pixel_combats/room';
-import * as teams from './default_teams.js';
+import { Map, AreaService, AreaViewService, AreaPlayerTriggerService, Game, Players, Inventory, LeaderBoard, BuildBlocksSet, Teams, Damage, BreackGraph, Ui, Properties, GameMode, Spawns, Timers, TeamsBalancer, NewGame, NewGameVote } from 'pixel_combats/room';
+import { DisplayValueHeader, Color } from 'pixel_combats/basic';
 
-// настройки
-var WaitingPlayersTime = 10;
-var BuildBaseTime = 60;
-var GameModeTime = 300;
-var DefPoints = GameModeTime * 0.2;
-var EndOfMatchTime = 10;
-var DefPointsMaxCount = 30;
-var DefTimerTickInderval = 1;
-var SavePointsCount = 10;
-var RepairPointsBySecond = 0.5;
-var CapturePoints = 10;		// сколько очков нужно для захвата
-var MaxCapturePoints = 15;	// сколько макс очков
-var RedCaptureW = 1;		// вес красных при захвате спавна
-var BlueCaptureW = 2;		// вес синих при захвате спавна
-var CaptureRestoreW = 1;	// сколько очков отнимается, если нет красных в зоне для захвата
-var UnCapturedColor = { r: 1, g: 1, b: 1 };
-var FakeCapturedColor = { r: 0, g: 1, b: 0 }; // к какому цвету стремится зона при ее захвате
-var CapturedColor = { r: 1 };
-var MaxSpawnsByArea = 25;	// макс спавнов на зону
+// * Настройки, констант. * //
+const WaitingPlayersTime = 10;
+const BuildBaseTime = 60;
+const GameModeTime = 300;
+const DefPoints = GameModeTime * 0.2;
+const EndOfMatchTime = 10;
+const DefPointsMaxCount = 30;
+const DefTimerTickInderval = 1;
+const SavePointsCount = 10;
+const RepairPointsBySecond = 1;
+const CapturePoints = 10; // * Столько нужно очков, для захвата. * //
+const MaxCapturePoints = 15; // * Макс очков. * //
+const RedCaptureW = 1; // * Вес красных, при захвате - зон. * //
+const BlueCaptureW = 2; // * Вес синих, при защите - зон. * //
+const CaptureRestoreW = 1; // * Столько очков отнимет, если красных нет в зоне. * //
+const UnCapturedColor = new Color(0, 0, 1, 0);
+const FakeCapturedColor = new Color(1, 1, 1, 0); // * Определённая зона, при стремление захвате зоны. * //
+const CapturedColor = new Color(1, 0, 0, 0);
+const MaxSpawnsByArea = 25; // * Макс спавнов, на зону. * //
 
-// константы
-var WaitingStateValue = "Waiting";
-var BuildModeStateValue = "BuildMode";
-var GameStateValue = "Game";
-var EndOfMatchStateValue = "EndOfMatch";
-var DefAreaTag = "def";
-var CaptureAreaTag = "capture";
-var HoldPositionHint = "GameModeHint/HoldPosition";
-var RunToBliePointHint = "GameModeHint/RunToBliePoint";
-var DefBlueAreaHint = "GameModeHint/DefBlueArea";
-var DefThisAreaHint = "GameModeHint/DefThisArea";
-var WaitingForBlueBuildHint = "GameModeHint/WaitingForBlueBuild";
-var ChangeTeamHint = "GameModeHint/ChangeTeam";
-var YourAreaIsCapturing = "GameModeHint/YourAreaIsCapturing";
-var PrepareToDefBlueArea = "GameModeHint/PrepareToDefBlueArea";
+// * Константы, имён - с продрублиновыми подсказками. * //
+const WaitingStateValue = 'Waiting';
+const BuildModeStateValue = 'BuildMode';
+const GameStateValue = 'Game';
+const EndOfMatchStateValue = 'EndOfMatch';
+const DefAreaTag = 'Def';
+const CaptureAreaTag = 'Capture';
+const DefBluePointsHint = 'Защищайте, эту - зону!';
+const RedDefCaptureZoneHint = 'Захватите, синию - зону!';
+const BlueBuildTriggerDefHint = 'Застройте синию - зону!';
+const RedWaitingBlueBuildTriggerHint = 'Синие, застраивают синию зону.Помешай им, застроить - синию зону!';
+const CaptureBlueTriggerHint = 'Красные, захватываю синию зону.Не дай захватить, синию - зону!';
+const CaptureTriggerBlueHint = 'Идёт захват, синей зоны...';
 
-// постоянные переменные
-var mainTimer = Timers.GetContext().Get("Main");
-var defTickTimer = Timers.getContext().Get("DefTimer");
-var stateProp = Properties.GetContext().Get("State");
-var defAreas = AreaService.GetByTag(DefAreaTag);
-var captureAreas = AreaService.GetByTag(CaptureAreaTag);
-var captureTriggers = [];
-var captureViews = [];
-var captureProperties = [];
-var capturedAreaIndexProp = Properties.GetContext().Get("RedCaptiredIndex");
+// * Постоянные объекты констант, при роботе с режимом. * //
+const MainTimer = Timers.GetContext().Get('Main');
+const DefTickTimer = Timers.GetContext().Get('DefTimer');
+const CapturedAreaIndexProp = Properties.GetContext().Get('RedCaptiredIndex');
+const StateProp = Properties.GetContext().Get('State');
+const DefAreas = AreaService.GetByTag(DefAreaTag);
+const CaptureAreas = AreaService.GetByTag(CaptureAreaTag);
+let CaptureTriggers = [];
+let CaptureViews = [];
+let CaptureProperties = [];
 
-// задаем цвет всем зонам для захвата
-Map.OnLoad.Add(function () {
-	InitializeDefAreas();
+// * Определяем цвет, всем зонам - для захвата. * //
+Map.OnLoad.Add(function() {
+ InitializeDefAreas();
 });
 
 function InitializeDefAreas() {
-	defAreas = AreaService.GetByTag(DefAreaTag);
-	captureAreas = AreaService.GetByTag(CaptureAreaTag);
-	// ограничитель
-	if (captureAreas == null) return;
-	if (captureAreas.length == 0) return;
-	captureTriggers = [];
-	captureViews = [];
-	captureProperties = [];
-
-	// сортировка зон
-	captureAreas.sort(function (a, b) {
-		if (a.Name > b.Name) return 1;
-		if (a.Name < b.Name) return -1;
-		return 0;
-	});
-
-	// инициализация переменных
-	for (var i = 0; i < captureAreas.length; ++i) {
-		// создаем визуализатор
-		var view = AreaViewService.GetContext().Get(captureAreas[i].Name + "View");
-		captureViews.push(view);
-		// создаем триггер
-		var trigger = AreaPlayerTriggerService.Get(captureAreas[i].Name + "Trigger");
-		captureTriggers.push(trigger);
-		// создаем свойство для захвата
-		var prop = Properties.GetContext().Get(captureAreas[i].Name + "Property");
-		prop.OnValue.Add(CapturePropOnValue);
-		captureProperties.push(prop);
+ DefAreas = AreaService.GetByTag(DefAreaTag);
+ CaptureAreas = AreaService.GetByTag(CaptureAreaTag);
+// * Ограничитель, постоянных - зон. * //
+   if (CaptureAreas == null) return;
+    if (CaptureAreas.length == 0) return;
+ captureTriggers = [];
+ captureViews = [];
+ captureProperties = [];
+    // * Сортировка, имени зон. * //
+ CaptureAreas.sort(function (a, b) {
+	if (a.Name > b.Name) return 1;
+	if (a.Name < b.Name) return -1;
+   return 0;
+  });
+// * Инициализация, объектных перемен - с ограниченными зонами. * //
+ for (const i = 0; i < CaptureAreas.length; ++i) {
+   // * Создаём, визулиязатор зоны. * //
+ const CaptureView = AreaViewService.GetContext().Get(CaptureAreas[i].Name + 'CaptureView');
+ CaptureViews.push(CaptureView);
+// Создаём, постоянный - триггер зоны.  * //
+const CaptureTrigger = AreaPlayerTriggerService.Get(CaptureAreas[i].Name + 'CaptureTrigger');
+CaptureTriggers.push(CaptureTrigger);
+       // Основное свойство, для - захвата.
+	const prop = Properties.GetContext().Get(CaptureAreas[i].Name + 'Property');
+	  prop.OnValue.Add(CapturePropOnValue);
+		 captureProperties.push(prop);
 	}
 }
 InitializeDefAreas();
@@ -90,256 +85,251 @@ InitializeDefAreas();
 //	log.debug("вошли в " + trigger);
 //}
 function CapturePropOnValue(prop) {
-	// берем индекс зоны
-	var index = -1;
-	for (var i = 0; i < captureProperties.length; ++i)
-		if (captureProperties[i] == prop) {
-			index = i;
-			break;
+ // * Образовываем индекс, зоны. * //
+const index = -1;
+     for (const i = 0; i < CaptureProperties.length; ++i)
+		 if (CaptureProperties[i] == prop) {
+			 index = i;
+		  break;
 		}
-	// отмачаем зону захваченой/незахваченой
-	if (prop.Value >= CapturePoints) CaptureArea(index);
-	else {
-		// красим в фейковую закраску
-		var d = prop.Value / MaxCapturePoints;
-		if (index >= 0) {
-			captureViews[index].Color = {
-				r: (FakeCapturedColor.r - UnCapturedColor.r) * d + UnCapturedColor.r,
-				g: (FakeCapturedColor.g - UnCapturedColor.g) * d + UnCapturedColor.g,
-				b: (FakeCapturedColor.b - UnCapturedColor.b) * d + UnCapturedColor.b
-			};
-		}
-		// снятие захвата
-		UnCaptureArea(index);
+// * Отметка зон, захваченой/незахваченой области. * //
+ if (prop.Value >= CapturePoints) CaptureArea(index);
+  else {
+// * Закраска, в фейк зону. * //
+	const d = prop.Value / MaxCapturePoints;
+  if (index >= 0) {
+		CaptureViews[index].Color = {
+			r: (FakeCapturedColor.r - UnCapturedColor.r) * d + UnCapturedColor.r,
+			g: (FakeCapturedColor.g - UnCapturedColor.g) * d + UnCapturedColor.g,
+			b: (FakeCapturedColor.b - UnCapturedColor.b) * d + UnCapturedColor.b
+		  };
 	}
-	// задаем индекс захваченой зоны красными
+// * Снятие захвата, с зон. * //
+	   UncaptureArea(index);
+   }
+	   // * Задаём, индекс захвата - областной зоны. * //
 	SetSpawnIndex();
-}
-
-// отмечает зону захваченой красными
+  }
+// * Отметка зоны, не захваченной. * //
 function CaptureArea(index) {
-	if (index < 0 || index >= captureAreas.length) return;
-	captureViews[index].Color = CapturedColor;
-	if (index < captureProperties.length - 1)
-		captureViews[index + 1].Enable = true;
+  if (index < 0 || index >= CaptureAreas.length) return;
+	  CaptureViews[index].Color = CapturedColor;
+	if (index < CaptureProperties.length - 1)
+		CaptureViews[index + 1].Enable = true;
 }
-// отмечает зону не захваченой красными
+// * Отмечаем, зону - не захваченной. * //
 function UnCaptureArea(index) {
-	if (index < 0 || index >= captureAreas.length) return;
-	//captureViews[index].Color = UnCapturedColor
-	if (index < captureProperties.length - 1 && captureProperties[index + 1].Value < CapturePoints)
-		captureViews[index + 1].Enable = false;
-	if (index > 0 && captureProperties[index - 1].Value < CapturePoints)
-		captureViews[index].Enable = false;
+ if (index < 0 || index >= CaptureAreas.length) return;
+   CaptureViews[index].Color = UnCapturedColor;
+	if (index < CaptureProperties.length - 1 && CaptureProperties[index + 1].Value < CapturePoints)
+		CaptureViews[index + 1].Enable = false;
+	if (index > 0 && CaptureProperties[index - 1].Value < CapturePoints)
+		CaptureViews[index].Enable = false;
 }
-// задает или снимает спавнпоинты захваченой области
+// * Задаём, область спавна. * //
 function SetSpawnIndex() {
-	// поиск макс захваченой области
-	var maxIndex = -1;
-	for (var i = 0; i < captureProperties.length; ++i) {
-		if (captureProperties[i].Value >= CapturePoints)
-			maxIndex = i;
-	}
-	capturedAreaIndexProp.Value = maxIndex;
+ // * Макс, захвата зон. * //
+  const MaxIndex = -1;
+for (const i = 0; i < CaptureProperties.length; ++i) {
+    if (CaptureProperties[i].Value >= CapturePoints) MaxIndex = i;
+     }
+	CapturedAreaIndexProp.Value = MaxIndex;
 }
-// при смене индекса захвата
-capturedAreaIndexProp.OnValue.Add(function (prop) {
-	var index = prop.Value;
-	var spawns = Spawns.GetContext(redTeam);
-	// очистка спавнов
-	spawns.CustomSpawnPoints.Clear();
-	// если нет захвата то сброс спавнов
-	if (index < 0 || index >= captureAreas.length) return;
-	// задаем спавны
-	var area = captureAreas[index];
-	var iter = area.Ranges.GetEnumerator();
-	iter.MoveNext();
-	var range = iter.Current;
-	// определяем куда смотреть спавнам
-	var lookPoint = {};
-	if (index < captureAreas.length - 1) lookPoint = captureAreas[index + 1].Ranges.GetAveragePosition();
+// * Объекты, сознания - областей спавна. * //
+CapturedAreaIndexProp.OnValue.Add(function(prop) {
+ const index = prop.Value;
+const SpawnsRed = Spawns.GetContext(RedTeam);
+  // * Отчиска, спавнов. * //
+ SpawnsRed.CustomSpawnPoints.Clear();
+      // * Сброс, спавнов областей. * //
+           if (index < 0 || index >= CaptureAreas.length) return;
+   // * Задаём, спавны. * //
+ const area = captureAreas[index];
+ const iter = area.Ranges.GetEnumerator();
+      iter.MoveNext();
+	    const range = iter.Current;
+    // * Определяем, просмотр - спавнов. * //
+	const lookPoint = {};
+	    if (index < CaptureAreas.length - 1) lookPoint = CaptureAreas[index + 1].Ranges.GetAveragePosition();
 	else {
-		if (defAreas.length > 0)
-			lookPoint = defAreas[0].Ranges.GetAveragePosition();
+		  if (defAreas.length > 0)
+			   lookPoint = DefAreas[0].Ranges.GetAveragePosition();
 	}
-
 	//log.debug("range=" + range);
-	var spawnsCount = 0;
-	for (var x = range.Start.x; x < range.End.x; x += 2)
-		for (var z = range.Start.z; z < range.End.z; z += 2) {
-			spawns.CustomSpawnPoints.Add(x, range.Start.y, z, Spawns.GetSpawnRotation(x, z, lookPoint.x, lookPoint.z));
-			++spawnsCount;
+	const spawnsCount = 0;
+	for (const x = range.Start.x; x < range.End.x; x += 2)
+		    for (const z = range.Start.z; z < range.End.z; z += 2) {
+		SpawnsRed.CustomSpawnPoints.Add(x, range.Start.y, z, Spawns.GetSpawnRotation(x, z, lookPoint.x, lookPoint.z));
+			  ++spawnsCount;
 			if (spawnsCount > MaxSpawnsByArea) return;
 		}
 });
 
-// проверка валидности
+// Проверка, валидности - режима.
 //if (defAreas.length == 0) Validate.ReportInvalid("GameMode/Validation/NeedDefTaggedArea");
 //else Validate.ReportValid();
 
-// применяем параметры создания комнаты
-Damage.FriendlyFire = GameMode.Parameters.GetBool("FriendlyFire");
-Map.Rotation = GameMode.Parameters.GetBool("MapRotation");
-BreackGraph.OnlyPlayerBlocksDmg = GameMode.Parameters.GetBool("PartialDesruction");
-BreackGraph.WeakBlocks = GameMode.Parameters.GetBool("LoosenBlocks");
+// * Применяем параметры, создания - комнаты. * //
+Damage.FriendlyFire = GameMode.Parameters.GetBool('FriendlyFire');
+Map.Rotation = GameMode.Parameters.GetBool('MapRotation');
+BreackGraph.OnlyPlayerBlocksDmg = GameMode.Parameters.GetBool('PartialDesruction');
+BreackGraph.WeakBlocks = GameMode.Parameters.GetBool('LoosenBlocks');
 
-// создаем визуализацию зон защиты
-var defView = AreaViewService.GetContext().Get("DefView");
-defView.color = teams.RED_TEAM_COLOR;
-defView.Tags = [DefAreaTag];
-defView.Enable = true;
+// * Визуализатор, зон - защиты. * //
+const DefView = AreaViewService.GetContext().Get('DefView');
+  DefView.Color = UnCapturedColor;
+  DefView.Tags = [DefAreaTag];
+  DefView.Enable = true;
 
-// создаем триггер зон защиты
-var defTrigger = AreaPlayerTriggerService.Get("DefTrigger");
-defTrigger.Tags = [DefAreaTag];
-defTrigger.OnEnter.Add(function (player) {
-	if (player.Team == blueTeam) {
-		player.Ui.Hint.Value = DefThisAreaHint;
+// Создаём, триггер - зоны захвата. * //
+const DefTrigger = AreaPlayerTriggerService.Get('DefTrigger');
+DefTrigger.Tags = [DefAreaTag];
+DefTrigger.Enable = true;
+DefTrigger.OnEnter.Add(function(Player) {
+  if (Player.Team === BlueTeam) {
+	Player.Ui.Hint.Value = DefBluePointsHint;
 		return;
-	}
-	if (player.Team == redTeam) {
-		if (stateProp.Value == GameStateValue)
-			player.Ui.Hint.Value = HoldPositionHint;
+}
+   if (Player.Team == redTeam) {
+	 if (StateProp.Value === GameStateValue) {
+	Player.Ui.Hint.Value = CaptureTriggerBlueHint;
 		else
-			player.Ui.Hint.Reset();
-		return;
+	     Player.Ui.Hint.Reset();
+		   return;
+              }  
 	}
 });
-defTrigger.OnExit.Add(function (player) {
-	player.Ui.Hint.Reset();
+DefTrigger.OnExit.Add(function(Player) {
+ Player.Ui.Hint.Reset();
 });
-defTrigger.Enable = true;
 
-// задаем обработчик таймера триггера
+// * Задаём обработчик таймера, триггера. * //
 defTickTimer.OnTimer.Add(function (timer) {
-	DefTriggerUpdate();
-	CaptureTriggersUpdate();
+ DefTriggerUpdate();
+ CaptureTriggersUpdate();
 });
 function DefTriggerUpdate() {
-	// ограничитель игрового режима
-	if (stateProp.Value != GameStateValue) return;
-	// поиск количества синих и красных в триггере
-	var blueCount = 0;
-	var redCount = 0;
-	var players = defTrigger.GetPlayers();
-	for (var i = 0; i < players.length; ++i) {
-		var p = players[i];
-		if (p.Team == blueTeam) ++blueCount;
-		if (p.Team == redTeam) ++redCount;
-	}
-
-	// если красных нет в зоне то восстанавливаются очки
-	if (redCount == 0) {
-		// восстанавливаем очки до несгораемой суммы
-		if (blueTeam.Properties.Get("Deaths").Value % SavePointsCount != 0)
-			blueTeam.Properties.Get("Deaths").Value += RepairPointsBySecond;
-		// синим идет подска об обороне зоны
-		if (stateProp.Value == GameStateValue)
-			blueTeam.Ui.Hint.Value = DefBlueAreaHint;
+ // * Ограничитель, игрового режима. * //
+ if (StateProp.Value != GameStateValue) return;
+     // * Поиск количества синих, и красных в триггере. * //
+const BlueCount = 0;
+const RedCount = 0;
+const CapturePlayers = DefTrigger.GetPlayers();
+   for (const i = 0; i < CapturePlayers.length; ++i) {
+	 const Play = CapturePlayers[i];
+	if (Play.Team === BlueTeam) ++BlueCount;
+	 if (Play.Team === RedTeam) ++RedCount;
+   }
+// * Если красных нет в зоне, то восстанавливаются очки. * //
+ if (RedCount === 0) {
+	// * Восстанавливаем очки, до несгораемой - суммы. * //
+	if (BlueTeam.Properties.Get('Deaths').Value % SavePointsCount != 0) {
+	 BlueTeam.Properties.Get('Deaths').Value += RepairPointsBySecond;
+		 // * Синим, выдаётся - подсказка об обороне зоны. * //
+		if (StateProp.Value === GameStateValue) {
+			BlueTeam.Ui.Hint.Value = DefBluePointsHint;
 		return;
-	}
-
-	// если есть хоть один красный то очки отнимаются
-	blueTeam.Properties.Get("Deaths").Value -= redCount;
-	// синим идет подсказка что зону захватывают
-	if (stateProp.Value == GameStateValue)
-		blueTeam.Ui.Hint.Value = YourAreaIsCapturing;
-}
-// обновление зон захвата
-function CaptureTriggersUpdate() {
-	// ограничитель игрового режима
-	if (stateProp.Value != GameStateValue) return;
-	// ограничитель
-	if (captureTriggers == null) return;
-	if (captureTriggers.length == 0) return;
-	// обновление
-	for (var i = 0; i < captureTriggers.length; ++i) {
-		// берем триггер
-		var trigger = captureTriggers[i];
-		// поиск количества синих и красных в триггере
-		var blueCount = 0;
-		var redCount = 0;
-		players = trigger.GetPlayers();
-		for (var j = 0; j < players.length; ++j) {
-			var p = players[j];
-			if (p.Team == blueTeam) ++blueCount;
-			if (p.Team == redTeam) ++redCount;
+		    }
 		}
-		// берем свойство захвата
-		var index = -1;
-		for (var i = 0; i < captureTriggers.length; ++i)
-			if (captureTriggers[i] == trigger) {
-				index = i;
-				break;
+	}
+	//* Если есть хоть один красный, то очки отнимаются. * //
+	 BlueTeam.Properties.Get('Deaths').Value -= RedCount;
+	 // * Синим выдаёт, подсказка что зону захватывают
+	if (StateProp.Value === GameStateValue) {
+		BlueTeam.Ui.Hint.Value = CaptureBlueTriggerHint;
+	    }
+}
+// * Обновление, всех зон - захвата. * //
+function CaptureTriggersUpdate() {
+   // * Ограничитель, игрового режима. * //
+ if (StateProp.Value != GameStateValue) return;
+ // * Ограничитель. * //
+ if (CaptureTriggers == null) return;
+ if (CaptureTriggers.length == 0) return;
+	  // * Обновление, зон. * //
+	for (const i = 0; i < CaptureTriggers.length; ++i) {
+	// * Берём, триггер зоны. * //
+	  const Trigger = CaptureTriggers[i];
+		 // * Роиск количества синих, и красных в триггере. * //
+		const BlueCount = 0;
+		const RedCount = 0;
+		 CapturePlayers = Trigger.GetPlayers();
+		  for (const j = 0; j < CapturePlayers.length; ++j) {
+		 const Play = CapturePlayers[j];
+			if (Play.Team === BlueTeam) ++BlueCount;
+			if (Play.Team === RedTeam) ++RedCount;
+		}
+		 // Свойство, захвата зоны. * //
+		const index = -1;
+		  for (const i = 0; i < CaptureTriggers.length; ++i) {
+			if (CaptureTriggers[i] == Trigger) {
+				  index = i;
+				break
 			}
-		if (index < 0) continue;
-		var value = captureProperties[index].Value;
-		// определяем на сколько очков изменять зону
-		// очки за присутствие синих
-		var changePoints = - blueCount * BlueCaptureW;
-		// очки за присутствие красных
-		if (index == 0 || captureProperties[index - 1].Value >= CapturePoints)
-			changePoints += redCount * RedCaptureW;
-		// спад очков захвата, если нет красных
-		if (redCount == 0 && value < CapturePoints) changePoints -= CaptureRestoreW;
-		// ограничители
-		if (changePoints == 0) continue;
-		var newValue = value + changePoints;
-		if (newValue > MaxCapturePoints) newValue = MaxCapturePoints;
-		if (newValue < 0) newValue = 0;
-		// изменяем очки захвата зоны
-		captureProperties[index].Value = newValue;
+		  }
+		if (index < 0) continue;	
+  const Value = CaptureProperties[index].Value;
+		    // * Определяем, на сколько очков - изменять зону. * //
+		// * Очки, за присутствие - синих. * //
+		 const ChangePoints = - BlueCount * BlueCaptureW;
+		 // Очки, за присутствие - красных. * //
+		if (index == 0 || CaptureProperties[index - 1].Value >= CapturePoints) {
+		   ChangePoints += RedCount * RedCaptureW;
+		// * Спад очков захвата, если нет красных. * //
+		if (RedCount == 0 && Value < CapturePoints) ChangePoints -= CaptureRestoreW;
+		 // * Ограничители. * //
+		 if (ChangePoints === 0) continue;
+		  const NewValue = Value + ChangePoints;
+		   if (NewValue > MaxCapturePoints) NewValue = MaxCapturePoints;
+	  	  if (NewValue < 0) NewValue = 0;
+		// * Изменяем очки, захвата зоны. * //
+		CaptureProperties[index].Value = NewValue;
+		}
 	}
 }
 
-// блок игрока всегда усилен
+// * Параметры игры (устарело) * //
 BreackGraph.PlayerBlockBoost = true;
-
-// параметры игры
 Properties.GetContext().GameModeName.Value = "GameModes/Team Dead Match";
 TeamsBalancer.IsAutoBalance = true;
 Ui.GetContext().MainTimerId.Value = mainTimer.Id;
-// создаем команд
-var blueTeam = teams.create_team_blue();
-var redTeam = teams.create_team_red();
-blueTeam.Build.BlocksSet.Value = BuildBlocksSet.Blue;
-redTeam.Build.BlocksSet.Value = BuildBlocksSet.Red;
+// * Создаём, команды. * //
+let BlueTeam = CreateNewTeam('Blue', 'Teams/Blue \n Синие', new Color(0, 0, 1, 0), BuildBlocksSet.Blue, Spawns.SpawnPointsGroups.Add(1));
+let RedTeam = CreateNewTeam('Red', 'Teams/Red \n Красные', new Color(1, 0, 0, 0), BuildBlocksSet.Red, Spawns.SpawnPointsGroups.Add(2));
+// * Создаём, моментальный спавн - красным. * //
+BlueTeam.Spawns.RespawnTime.Value = 10;
+RedTeam.Spawns.RespawnTime.Value = 0;
+// * Задаем макс очков, синей команды. * //
+BlueTeam.Properties.Get('Deaths').Value = DefPoints;
 
-// делаем моментальный спавн синим
-blueTeam.Spawns.RespawnTime.Value = 10;
-redTeam.Spawns.RespawnTime.Value = 0;
 
-// задаем макс очкой синей команды
-//var maxDeaths = Players.MaxCount * 5;
-blueTeam.Properties.Get("Deaths").Value = DefPoints;
-//redTeam.Properties.Get("Deaths").Value = maxDeaths;
-// задаем что выводить в лидербордах
+// * Задаём, что выводить - в лидербордах. * //
 LeaderBoard.PlayerLeaderBoardValues = [
 	{
-		Value: "Kills",
-		DisplayName: "Statistics/Kills",
-		ShortDisplayName: "Statistics/KillsShort"
+		Value: 'Kills',
+		DisplayName: 'Statistics/Kills',
+		ShortDisplayName: 'Statistics/KillsShort'
 	},
 	{
-		Value: "Deaths",
-		DisplayName: "Statistics/Deaths",
-		ShortDisplayName: "Statistics/DeathsShort"
+		Value: 'Deaths',
+		DisplayName: 'Statistics/Deaths',
+		ShortDisplayName: 'Statistics/DeathsShort'
 	},
 	{
-		Value: "Spawns",
-		DisplayName: "Statistics/Spawns",
-		ShortDisplayName: "Statistics/SpawnsShort"
+		Value: 'Spawns',
+		DisplayName: 'Statistics/Spawns',
+		ShortDisplayName: 'Statistics/SpawnsShort'
 	},
 	{
-		Value: "Scores",
-		DisplayName: "Statistics/Scores",
-		ShortDisplayName: "Statistics/ScoresShort"
+		Value: 'Scores',
+		DisplayName: 'Очки',
+		ShortDisplayName: 'Очки'
 	}
 ];
 LeaderBoard.TeamLeaderBoardValue = {
-	Value: "Deaths",
-	DisplayName: "Statistics\Deaths",
-	ShortDisplayName: "Statistics\Deaths"
+	Value: 'Deaths',
+	DisplayName: 'Statistics\Deaths',
+	ShortDisplayName: 'Statistics\Deaths'
 };
 // вес игрока в лидерборде
 LeaderBoard.PlayersWeightGetter.Set(function (player) {
@@ -412,7 +402,7 @@ SetWaitingMode();
 // состояния игры
 function SetWaitingMode() {
 	stateProp.Value = WaitingStateValue;
-	Ui.GetContext().Hint.Value = "Hint/WaitingPlayers";
+	Ui.GetContext().Hint.Value = "Ожидание, всех - игроков...";
 	Spawns.GetContext().enable = false;
 	mainTimer.Restart(WaitingPlayersTime);
 }
@@ -437,8 +427,8 @@ function SetBuildMode() {
 
 	stateProp.Value = BuildModeStateValue;
 	Ui.GetContext().Hint.Value = ChangeTeamHint;
-	blueTeam.Ui.Hint.Value = PrepareToDefBlueArea;
-	redTeam.Ui.Hint.Value = WaitingForBlueBuildHint;
+	BlueTeam.Ui.Hint.Value = BlueBuildTriggerDefHint;
+	RedTeam.Ui.Hint.Value = RedWaitingBlueBuildTriggerHint;
 
 	blueTeam.Inventory.Main.Value = false;
 	blueTeam.Inventory.Secondary.Value = false;
