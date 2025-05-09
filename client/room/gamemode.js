@@ -125,7 +125,7 @@ function CaptureArea(index) {
 // отмечает зону не захваченой красными
 function UnCaptureArea(index) {
 	if (index < 0 || index >= captureAreas.length) return;
-	//captureViews[index].Color = UnCapturedColor
+	//captureViews[index].Color = UnCapturedColor;
 	if (index < captureProperties.length - 1 && captureProperties[index + 1].Value < CapturePoints) 
 		captureViews[index + 1].Enable = false;
 	if (index > 0 && captureProperties[index - 1].Value < CapturePoints) 
@@ -516,7 +516,7 @@ function RestartGame() {
 }
 
 function SpawnTeams() {
-	for (const t of Teams) {
-	Spawns.GetContext(t).Spawn();
+	for (const Team of Teams) {
+	Spawns.GetContext(Team).Spawn();
 	}
 }
