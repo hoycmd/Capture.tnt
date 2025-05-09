@@ -2,15 +2,15 @@ import { Map, AreaService, AreaViewService, AreaPlayerTriggerService, Game, Play
 import { Color } from 'pixel_combats/basic';
 
 // настройки
-var WaitingPlayersTime = 10;
-var BuildBaseTime = 60;
-var GameModeTime = 300;
+var WaitingPlayersTime = 11;
+var BuildBaseTime = 61;
+var GameModeTime = 301;
 var DefPoints = GameModeTime * 0.2;
-var EndOfMatchTime = 10;
+var EndOfMatchTime = 11;
 var DefPointsMaxCount = 30;
 var DefTimerTickInderval = 1;
 var SavePointsCount = 10;
-var RepairPointsBySecond = 0.5;
+var RepairPointsBySecond = 1;
 var CapturePoints = 10;		// сколько очков нужно для захвата
 var MaxCapturePoints = 15;	// сколько макс очков
 var RedCaptureW = 1;		// вес красных при захвате спавна
@@ -32,10 +32,10 @@ var HoldPositionHint = "GameModeHint/HoldPosition";
 var RunToBliePointHint = "GameModeHint/RunToBliePoint";
 var DefBlueAreaHint = "GameModeHint/DefBlueArea";
 var DefThisAreaHint = "GameModeHint/DefThisArea";
-var WaitingForBlueBuildHint = "GameModeHint/WaitingForBlueBuild";
-var ChangeTeamHint = "GameModeHint/ChangeTeam";
+var WaitingForBlueBuildHint = "Синие, ";
+var ChangeTeamHint = "Выберите, команду!";
 var YourAreaIsCapturing = "GameModeHint/YourAreaIsCapturing";
-var PrepareToDefBlueArea = "GameModeHint/PrepareToDefBlueArea";
+var PrepareToDefBlueArea = "Застраивайте, синию - зону!";
 
 // постоянные переменные
 var mainTimer = Timers.GetContext().Get("Main");
@@ -415,7 +415,7 @@ SetWaitingMode();
 // состояния игры
 function SetWaitingMode() {
 	stateProp.Value = WaitingStateValue;
-	Ui.GetContext().Hint.Value = "Hint/WaitingPlayers";
+	Ui.GetContext().Hint.Value = "Ожидание, всех - игроков...";
 	Spawns.GetContext().enable = false;
 	mainTimer.Restart(WaitingPlayersTime);
 }
