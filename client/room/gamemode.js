@@ -28,14 +28,14 @@ var GameStateValue = "Game";
 var EndOfMatchStateValue = "EndOfMatch";
 var DefAreaTag = "def";
 var CaptureAreaTag = "capture";
-var HoldPositionHint = "GameModeHint/HoldPosition";
-var RunToBliePointHint = "GameModeHint/RunToBliePoint";
-var DefBlueAreaHint = "GameModeHint/DefBlueArea";
-var DefThisAreaHint = "GameModeHint/DefThisArea";
-var WaitingForBlueBuildHint = "GameModeHint/WaitingForBlueBuild";
-var ChangeTeamHint = "GameModeHint/ChangeTeam";
-var YourAreaIsCapturing = "GameModeHint/YourAreaIsCapturing";
-var PrepareToDefBlueArea = "GameModeHint/PrepareToDefBlueArea";
+var WaitingForBlueBuildHint = "Синие, застраивают синию зону.Помешай им, застроить - синию зону!";
+var ChangeTeamHint = "Выберите, команду!";
+var YourAreaIsCapturing = "Красные, захватывают синию зону.Не дай захватит, синию зону!";
+var PrepareToDefBlueArea = "Застраивайте, синию - зону!";"
+var HoldPositionHint = "Захват, синей зоны - ожидайте..."
+var RunToBliePointHint = "Захватите, синию - зону!";
+var DefBlueAreaHint = "Защищайте, синию - зону!";
+var DefThisAreaHint = "Защищайте, эту - зону!";
 
 // постоянные переменные
 var mainTimer = Timers.GetContext().Get("Main");
