@@ -1,7 +1,6 @@
 import { Map, AreaService, AreaViewService, AreaPlayerTriggerService, Game, Players, Inventory, LeaderBoard, BuildBlocksSet, Teams, Damage, BreackGraph, Ui, Properties, GameMode, Spawns, Timers, TeamsBalancer, NewGame, NewGameVote } from 'pixel_combats/room';
 import { DisplayValueHeader, Color } from 'pixel_combats/basic';
 import * as teams from './default_teams.js';
-import * as default_timer from './library_timer.js';
 
 // настройки публичных объектов 
 const WaitingPlayersTime = 11; // баг в секундах, при котором 1 секунда пропадает что получается не 10 а 9 в матче
