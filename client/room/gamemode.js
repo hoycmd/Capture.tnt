@@ -368,12 +368,6 @@ Damage.OnKill.Add(function (player, killed) {
 	    player.Properties.Scores.Value += 100; // дополнительный очки для награды
    }
 });
-// очки за столько урона, сколько есть в игроке 
-Damage.OnDamage.Add(function(player, dmgd, dmg) {
-  if (player.Team === null || dmgd.Team === null) return;
-if (player.id !== dmgd.id) p.Properties.Scores.Value += Math.ceil(dmg);
-   player.Properties.Scores.Value = `${p.Properties.Scores.Value}`;
-});
 
 // задаем обработчик таймера
 scores_timer.OnTimer.Add(function() {
